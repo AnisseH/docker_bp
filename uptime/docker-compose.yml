@@ -1,0 +1,32 @@
+version: '3.3'
+services:
+  uptime:
+    image: louislam/uptime-kuma:1
+    container_name: uptime
+    volumes:
+      - /opt/uptime:/app/data
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    networks:
+      - traefik
+    ports:
+      - 3001:3001
+    labels:
+      - "com.centurylinklabs.watchtower.enable=true"
+      - "traefik.enable=true"
+      - "traefik.http.routers.uptime.entrypoints=http"
+      - "traefik.http.routers.uptime.rule=Host(`uptime.${DOMAINE_URL}`)"
+      - "traefik.http.routers.uptime.middlewares=default-whitelist@file"
+      - "traefik.http.middlewares.sslheader.headers.customrequestheaders.X-Forwarded-Proto=https"
+      - "traefik.http.middlewares.uptime-https-redirect.redirectscheme.scheme=https"
+      - "traefik.http.routers.uptime.middlewares=uptime-https-redirect"
+      - "traefik.http.routers.uptime-secure.entrypoints=https"
+      - "traefik.http.routers.uptime-secure.rule=Host(`uptime.${DOMAINE_URL}`)"
+      - "traefik.http.routers.uptime-secure.tls=true"
+      - "traefik.http.routers.uptime-secure.service=uptime"
+      - "traefik.http.routers.uptime-secure.tls.certresolver=step-ca"
+      - "traefik.http.services.uptime.loadbalancer.server.port=3001"
+networks:
+  traefik:
+    external: true

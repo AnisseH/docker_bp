@@ -1,0 +1,114 @@
+services:
+  influxdb:
+    image: influxdb:latest
+    container_name: influxdb
+    ports:
+      - '8086:8086'
+    labels:
+      - "com.centurylinklabs.watchtower.enable=true"
+      - "traefik.enable=true"
+      - "traefik.http.routers.influxdb.entrypoints=http"
+      - "traefik.http.routers.influxdb.rule=Host(`influxdb.${DOMAINE_URL}`)"
+      - "traefik.http.routers.influxdb.middlewares=default-whitelist@file"
+      - "traefik.http.middlewares.sslheader.headers.customrequestheaders.X-Forwarded-Proto=https"
+      - "traefik.http.middlewares.influxdb-https-redirect.redirectscheme.scheme=https"
+      - "traefik.http.routers.influxdb.middlewares=influxdb-https-redirect"
+      - "traefik.http.routers.influxdb-secure.entrypoints=https"
+      - "traefik.http.routers.influxdb-secure.rule=Host(`influxdb.${DOMAINE_URL}`)"
+      - "traefik.http.routers.influxdb-secure.tls=true"
+      - "traefik.http.routers.influxdb-secure.service=influxdb"
+      - "traefik.http.routers.influxdb-secure.tls.certresolver=step-ca"
+      - "traefik.http.services.influxdb.loadbalancer.server.port=8086"
+    networks:
+      - traefik
+    volumes:
+      - /opt/influxdb/db:/var/lib/influxdb2
+      - /opt/influxdb/config:/etc/influxdb2
+    restart: unless-stopped
+
+#  telegraf:
+#    image: docker.io/telegraf:latest
+#    container_name: telegraf
+#    environment:
+#      - MQTT_USERNAME=$
+#      - MQTT_PASSWORD=$
+#    volumes:
+#      - ./telegraf.conf:/etc/telegraf/telegraf.conf:ro
+
+  snmp_exporter:
+    image: prom/snmp-exporter
+    container_name: snmp_exporter
+    restart: "always"
+    networks:
+      - traefik
+    ports:
+      - 9116:9116
+    labels:
+      - "com.centurylinklabs.watchtower.enable=true"
+    volumes:
+      - /opt/prometheus/snmp_exporter/snmp.yml:/etc/snmp_exporter/snmp.yml
+  
+  prometheus:
+    image: prom/prometheus
+    user: "1000:1000"
+    container_name: prometheus
+    labels:
+      - "com.centurylinklabs.watchtower.enable=true"
+      - "traefik.enable=true"
+      - "traefik.http.routers.prometheus.entrypoints=http"
+      - "traefik.http.routers.prometheus.rule=Host(`prometheus.${DOMAINE_URL}`)"
+      - "traefik.http.routers.prometheus.middlewares=default-whitelist@file"
+      - "traefik.http.middlewares.sslheader.headers.customrequestheaders.X-Forwarded-Proto=https"
+      - "traefik.http.middlewares.prometheus-https-redirect.redirectscheme.scheme=https"
+      - "traefik.http.routers.prometheus.middlewares=prometheus-https-redirect"
+      - "traefik.http.routers.prometheus-secure.entrypoints=https"
+      - "traefik.http.routers.prometheus-secure.rule=Host(`prometheus.${DOMAINE_URL}`)"
+      - "traefik.http.routers.prometheus-secure.tls=true"
+      - "traefik.http.routers.prometheus-secure.service=prometheus"
+      - "traefik.http.routers.prometheus-secure.tls.certresolver=step-ca"
+      - "traefik.http.services.prometheus.loadbalancer.server.port=9090"
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+    volumes:
+      - /opt/prometheus/prom_config/prometheus.yml:/etc/prometheus/prometheus.yml
+      - /opt/prometheus/prom_data:/prometheus/data
+    networks:
+      - traefik
+    ports:
+      - 9090:9090
+    environment:
+      - TZ=Europe/Paris
+       
+  grafana:
+    image: grafana/grafana:latest
+    user: "1000"
+    container_name: grafana
+    restart: unless-stopped
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.grafana.entrypoints=http"
+      - "traefik.http.routers.grafana.rule=Host(`grafana.${DOMAINE_URL}`)"
+      - "traefik.http.routers.grafana-secure.entrypoints=https"
+      - "traefik.http.routers.grafana-secure.rule=Host(`grafana.${DOMAINE_URL}`)"
+      - "traefik.http.middlewares.grafana-https-redirect.redirectscheme.scheme=https"
+      - "traefik.http.routers.grafana.middlewares=grafana-https-redirect"
+      - "traefik.http.routers.grafana-secure.tls=true"
+      - "traefik.http.routers.grafana-secure.tls.certresolver=step-ca"
+      - "traefik.http.services.grafana.loadbalancer.server.port=3000"
+      - "traefik.http.middlewares.sslheader.headers.customrequestheaders.X-Forwarded-Proto=https"
+      - "com.centurylinklabs.watchtower.enable=true"
+    networks:
+      - traefik
+    volumes:
+      - /opt/grafana:/var/lib/grafana
+      - /opt/grafana/config:/etc/grafana
+    depends_on:
+      - influxdb
+      - prometheus
+    environment:
+      - TZ=Europe/Paris
+      - GF_SECURITY_ADMIN_USER=${GRAFANA_USERNAME}
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_PASSWORD}
+networks: 
+  traefik:
+    external: true
