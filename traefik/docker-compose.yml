@@ -8,8 +8,13 @@ services:
     volumes:
       - /opt/step-ca:/home/step # shared volume between step-ca and traefik to access root ca
     environment:
+#      DOCKER_STEPCA_INIT_NAME: "Step CA"
+#      DOCKER_STEPCA_INIT_DNS_NAMES: "step-ca" # must at least include name of step-ca service which is referenced as acme.caserver
+#      DOCKER_STEPCA_INIT_REMOTE_MANAGEMENT: "true"
+#      DOCKER_STEPCA_INIT_ACME: "true" # initialize acme provider
+
       DOCKER_STEPCA_INIT_NAME: "Step CA"
-      DOCKER_STEPCA_INIT_DNS_NAMES: "step-ca" # must at least include name of step-ca service which is referenced as acme.caserver
+      DOCKER_STEPCA_INIT_DNS_NAMES: "step-ca.${DOMAINE_URL}" # must at least include name of step-ca service which is referenced as acme.caserver
       DOCKER_STEPCA_INIT_REMOTE_MANAGEMENT: "true"
       DOCKER_STEPCA_INIT_ACME: "true" # initialize acme provider
     networks:
@@ -53,7 +58,6 @@ services:
       - /opt/traefik/acme.json:/acme.json
       - /opt/traefik/config.yml:/config.yml:ro
       - /opt/traefik/logs:/var/log/traefik
-
 networks: 
   traefik:
     external: true

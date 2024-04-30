@@ -1,0 +1,28 @@
+services:
+  wiki:
+    image: bitnami/dokuwiki:latest
+    container_name: wiki
+    restart: unless-stopped
+    user: "${UID}:${GID}"
+    networks:
+      - traefik
+    volumes:
+        - /opt/wiki:/bitnami/dokuwiki
+    labels: 
+        - "com.centurylinklabs.watchtower.enable=true"
+        - "traefik.enable=true"
+        - "traefik.http.routers.wiki.entrypoints=http"
+        - "traefik.http.routers.wiki.rule=Host(`wiki.${DOMAINE_URL}`)"
+        - "traefik.http.routers.wiki.middlewares=default-whitelist@file"
+        - "traefik.http.middlewares.sslheader.headers.customrequestheaders.X-Forwarded-Proto=https"
+        - "traefik.http.middlewares.wiki-https-redirect.redirectscheme.scheme=https"
+        - "traefik.http.routers.wiki.middlewares=wiki-https-redirect"
+        - "traefik.http.routers.wiki-secure.entrypoints=https"
+        - "traefik.http.routers.wiki-secure.rule=Host(`wiki.${DOMAINE_URL}`)"
+        - "traefik.http.routers.wiki-secure.tls=true"
+        - "traefik.http.routers.wiki-secure.service=wiki"
+        - "traefik.http.routers.wiki-secure.tls.certresolver=step-ca"
+        - "traefik.http.services.wiki.loadbalancer.server.port=8080"
+networks: 
+  traefik:
+    external: true
