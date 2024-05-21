@@ -20,7 +20,7 @@ services:
       - "traefik.http.routers.portainer-secure.tls.certresolver=step-ca"
       - "traefik.http.services.portainer.loadbalancer.server.port=9000"
     ports:
-      - 8000:8000
+      - 8022:8000
       - 9443:9443
       - 9001:9000 # for http
     volumes:

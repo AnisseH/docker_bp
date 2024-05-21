@@ -1,0 +1,34 @@
+version: '3.3'
+services:
+  pdf:
+    image: frooodle/s-pdf:latest
+    container_name: pdf
+    hostname: pdf
+    volumes:
+      - /opt/stirling_pdf/tessdata:/usr/share/tessdata #Required for extra OCR languages
+      - /opt/stirling_pdf/configs:/configs
+#      - /location/of/customFiles:/customFiles/
+#      - /location/of/logs:/logs/
+    networks:
+      - traefik
+    environment:
+      - DOCKER_ENABLE_SECURITY=false
+      - INSTALL_BOOK_AND_ADVANCED_HTML_OPS=false
+      - LANGS=fr_FR
+    labels:
+       - "traefik.enable=true"
+       - "traefik.http.routers.pdf.entrypoints=http"
+       - "traefik.http.routers.pdf.rule=Host(`pdf.${DOMAINE_URL}`)"
+       - "traefik.http.routers.pdf.middlewares=default-whitelist@file"
+       - "traefik.http.middlewares.sslheader.headers.customrequestheaders.X-Forwarded-Proto=https"
+       - "traefik.http.middlewares.pdf-https-redirect.redirectscheme.scheme=https"
+       - "traefik.http.routers.pdf.middlewares=pdf-https-redirect"
+       - "traefik.http.routers.pdf-secure.entrypoints=https"
+       - "traefik.http.routers.pdf-secure.rule=Host(`pdf.${DOMAINE_URL}`)"
+       - "traefik.http.routers.pdf-secure.tls=true"
+       - "traefik.http.routers.pdf-secure.service=pdf"
+       - "traefik.http.routers.pdf-secure.tls.certresolver=step-ca"
+       - "traefik.http.services.pdf.loadbalancer.server.port=8080"
+networks:
+  traefik:
+    external: true

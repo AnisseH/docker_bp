@@ -1,0 +1,172 @@
+name: librenms
+services:
+  db:
+    image: mariadb:10.5
+    container_name: librenms_db
+    networks:
+      - traefik
+    command:
+      - "mysqld"
+      - "--innodb-file-per-table=1"
+      - "--lower-case-table-names=0"
+      - "--character-set-server=utf8mb4"
+      - "--collation-server=utf8mb4_unicode_ci"
+    volumes:
+      - "/opt/librenms/db:/var/lib/mysql"
+    environment:
+      - "TZ=${TZ}"
+      - "MYSQL_ALLOW_EMPTY_PASSWORD=yes"
+      - "MYSQL_DATABASE=${MYSQL_DATABASE}"
+      - "MYSQL_USER=${MYSQL_USER}"
+      - "MYSQL_PASSWORD=${MYSQL_PASSWORD}"
+    restart: always
+
+  redis:
+    image: redis:5.0-alpine
+    container_name: librenms_redis
+    networks:
+      - traefik
+    environment:
+      - "TZ=${TZ}"
+    restart: always
+
+  msmtpd:
+    image: crazymax/msmtpd:latest
+    container_name: librenms_msmtpd
+    networks:
+      - traefik
+    env_file:
+      - "./msmtpd.env"
+    restart: always
+
+  librenms:
+    image: librenms/librenms:latest
+    container_name: librenms
+    networks:
+      - traefik
+    hostname: librenms
+    depends_on:
+      - db
+      - redis
+      - msmtpd
+    volumes:
+      - "/opt/librenms/data:/data"
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.librenms.entrypoints=http"
+      - "traefik.http.routers.librenms.rule=Host(`librenms.${DOMAINE_URL}`)"
+      - "traefik.http.routers.librenms.middlewares=default-whitelist@file"
+      - "traefik.http.middlewares.sslheader.headers.customrequestheaders.X-Forwarded-Proto=https"
+      - "traefik.http.middlewares.librenms-https-redirect.redirectscheme.scheme=https"
+      - "traefik.http.routers.librenms.middlewares=librenms-https-redirect"
+      - "traefik.http.routers.librenms-secure.entrypoints=https"
+      - "traefik.http.routers.librenms-secure.rule=Host(`librenms.${DOMAINE_URL}`)"
+      - "traefik.http.routers.librenms-secure.tls=true"
+      - "traefik.http.routers.librenms-secure.service=librenms"
+      - "traefik.http.routers.librenms-secure.tls.certresolver=step-ca"
+      - "traefik.http.services.librenms.loadbalancer.server.port=8000"
+    env_file:
+      - "./librenms.env"
+    environment:
+      - "TZ=${TZ}"
+      - "PUID=${PUID}"
+      - "PGID=${PGID}"
+      - "DB_HOST=db"
+      - "DB_NAME=${MYSQL_DATABASE}"
+      - "DB_USER=${MYSQL_USER}"
+      - "DB_PASSWORD=${MYSQL_PASSWORD}"
+      - "DB_TIMEOUT=60"
+    restart: always
+
+  dispatcher:
+    image: librenms/librenms:latest
+    container_name: librenms_dispatcher
+    hostname: librenms-dispatcher
+    networks:
+      - traefik
+    depends_on:
+      - librenms
+      - redis
+    volumes:
+      - "/opt/librenms/data:/data"
+    env_file:
+      - "./librenms.env"
+    environment:
+      - "TZ=${TZ}"
+      - "PUID=${PUID}"
+      - "PGID=${PGID}"
+      - "DB_HOST=db"
+      - "DB_NAME=${MYSQL_DATABASE}"
+      - "DB_USER=${MYSQL_USER}"
+      - "DB_PASSWORD=${MYSQL_PASSWORD}"
+      - "DB_TIMEOUT=60"
+      - "DISPATCHER_NODE_ID=dispatcher1"
+      - "SIDECAR_DISPATCHER=1"
+    restart: always
+
+  syslogng:
+    image: librenms/librenms:latest
+    container_name: librenms_syslog
+    hostname: librenms-syslogng
+    networks:
+      - traefik
+    depends_on:
+      - librenms
+      - redis
+    ports:
+      - target: 514
+        published: 514
+        protocol: tcp
+      - target: 514
+        published: 514
+        protocol: udp
+    volumes:
+      - "/opt/librenms/data:/data"
+    env_file:
+      - "./librenms.env"
+    environment:
+      - "TZ=${TZ}"
+      - "PUID=${PUID}"
+      - "PGID=${PGID}"
+      - "DB_HOST=db"
+      - "DB_NAME=${MYSQL_DATABASE}"
+      - "DB_USER=${MYSQL_USER}"
+      - "DB_PASSWORD=${MYSQL_PASSWORD}"
+      - "DB_TIMEOUT=60"
+      - "SIDECAR_SYSLOGNG=1"
+    restart: always
+
+  snmptrapd:
+    image: librenms/librenms:latest
+    container_name: librenms_snmptrapd
+    hostname: librenms-snmptrapd
+    networks:
+      - traefik
+    depends_on:
+      - librenms
+      - redis
+    ports:
+      - target: 162
+        published: 162
+        protocol: tcp
+      - target: 162
+        published: 162
+        protocol: udp
+    volumes:
+      - "/opt/librenms/data:/data"
+    env_file:
+      - "./librenms.env"
+    environment:
+      - "TZ=${TZ}"
+      - "PUID=${PUID}"
+      - "PGID=${PGID}"
+      - "DB_HOST=db"
+      - "DB_NAME=${MYSQL_DATABASE}"
+      - "DB_USER=${MYSQL_USER}"
+      - "DB_PASSWORD=${MYSQL_PASSWORD}"
+      - "DB_TIMEOUT=60"
+      - "SIDECAR_SNMPTRAPD=1"
+    restart: always
+networks:
+  traefik:
+    external: true
