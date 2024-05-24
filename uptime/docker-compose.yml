@@ -5,6 +5,7 @@ services:
     container_name: uptime
     volumes:
       - /opt/uptime:/app/data
+      - /var/run/docker.sock:/var/run/docker.sock:ro
     restart: unless-stopped
     security_opt:
       - no-new-privileges:true
