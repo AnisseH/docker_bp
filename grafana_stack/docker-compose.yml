@@ -48,6 +48,35 @@ services:
     volumes:
       - /opt/prometheus/snmp_exporter/snmp.yml:/etc/snmp_exporter/snmp.yml
   
+  cadvisor:
+    image: gcr.io/cadvisor/cadvisor:latest
+    hostname: cadvisor
+    container_name: cadvisor
+    restart: "always"
+    networks:
+      - traefik
+    volumes:
+      - /:/rootfs:ro
+      - /var/run:/var/run:ro
+      - /sys:/sys:ro
+      - /var/lib/docker/:/var/lib/docker:ro
+      - /dev/disk/:/dev/disk:ro
+    labels:
+      - "com.centurylinklabs.watchtower.enable=true"
+      - "traefik.enable=true"
+      - "traefik.http.routers.cadvisor.entrypoints=http"
+      - "traefik.http.routers.cadvisor.rule=Host(`cadvisor.${DOMAINE_URL}`)"
+      - "traefik.http.routers.cadvisor.middlewares=default-whitelist@file"
+      - "traefik.http.middlewares.sslheader.headers.customrequestheaders.X-Forwarded-Proto=https"
+      - "traefik.http.middlewares.cadvisor-https-redirect.redirectscheme.scheme=https"
+      - "traefik.http.routers.cadvisor.middlewares=cadvisor-https-redirect"
+      - "traefik.http.routers.cadvisor-secure.entrypoints=https"
+      - "traefik.http.routers.cadvisor-secure.rule=Host(`cadvisor.${DOMAINE_URL}`)"
+      - "traefik.http.routers.cadvisor-secure.tls=true"
+      - "traefik.http.routers.cadvisor-secure.service=cadvisor"
+      - "traefik.http.routers.cadvisor-secure.tls.certresolver=step-ca"
+      - "traefik.http.services.cadvisor.loadbalancer.server.port=8080"
+
   prometheus:
     image: prom/prometheus
     user: "1000:1000"

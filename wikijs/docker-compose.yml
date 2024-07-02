@@ -1,0 +1,45 @@
+services: 
+  wikijs-db:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_DB: ${DB_NAME}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_USER: ${DB_USER}
+    logging:
+      driver: "none"
+    networks:
+      - traefik
+    restart: unless-stopped
+    volumes:
+      - /opt/wikijs/db:/var/lib/postgresql/data
+  wikijs:
+    image: ghcr.io/requarks/wiki:2
+    depends_on:
+      - wikijs-db
+    networks:
+      - traefik
+    environment:
+      DB_TYPE: postgres
+      DB_HOST: wikijs-db
+      DB_PORT: 5432
+      DB_USER: ${DB_USER}
+      DB_PASS: ${DB_PASSWORD}
+      DB_NAME: ${DB_NAME}
+    restart: unless-stopped
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.wikijs.entrypoints=http"
+      - "traefik.http.routers.wikijs.rule=Host(`docs.${DOMAINE_URL}`)"
+      - "traefik.http.routers.wikijs.middlewares=default-whitelist@file"
+      - "traefik.http.middlewares.sslheader.headers.customrequestheaders.X-Forwarded-Proto=https"
+      - "traefik.http.middlewares.wikijs-https-redirect.redirectscheme.scheme=https"
+      - "traefik.http.routers.wikijs.middlewares=outline-https-redirect"
+      - "traefik.http.routers.wikijs-secure.entrypoints=https"
+      - "traefik.http.routers.wikijs-secure.rule=Host(`docs.${DOMAINE_URL}`)"
+      - "traefik.http.routers.wikijs-secure.tls=true"
+      - "traefik.http.routers.wikijs-secure.service=wikijs"
+      - "traefik.http.routers.wikijs-secure.tls.certresolver=step-ca"
+      - "traefik.http.services.wikijs.loadbalancer.server.port=3000"
+networks: 
+  traefik:
+    external: true
