@@ -1,6 +1,7 @@
 services: 
   wikijs-db:
     image: postgres:15-alpine
+    container_name: wikijs-db
     environment:
       POSTGRES_DB: ${DB_NAME}
       POSTGRES_PASSWORD: ${DB_PASSWORD}
@@ -14,6 +15,7 @@ services:
       - /opt/wikijs/db:/var/lib/postgresql/data
   wikijs:
     image: ghcr.io/requarks/wiki:2
+    container_name: wikijs
     depends_on:
       - wikijs-db
     networks:

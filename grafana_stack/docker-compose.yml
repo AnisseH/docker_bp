@@ -35,19 +35,19 @@ services:
 #    volumes:
 #      - ./telegraf.conf:/etc/telegraf/telegraf.conf:ro
 
-  snmp_exporter:
-    image: prom/snmp-exporter
-    container_name: snmp_exporter
-    restart: "always"
-    networks:
-      - traefik
-    ports:
-      - 9116:9116
-    labels:
-      - "com.centurylinklabs.watchtower.enable=true"
-    volumes:
-      - /opt/prometheus/snmp_exporter/snmp.yml:/etc/snmp_exporter/snmp.yml
-  
+#  snmp_exporter:
+#    image: prom/snmp-exporter
+#    container_name: snmp_exporter
+#    restart: "always"
+#    networks:
+#      - traefik
+#    ports:
+#      - 9116:9116
+#    labels:
+#      - "com.centurylinklabs.watchtower.enable=true"
+#    volumes:
+#      - /opt/prometheus/snmp_exporter/snmp.yml:/etc/snmp_exporter/snmp.yml
+
   cadvisor:
     image: gcr.io/cadvisor/cadvisor:latest
     hostname: cadvisor
